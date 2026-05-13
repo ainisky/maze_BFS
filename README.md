@@ -1,5 +1,4 @@
 # Maze Game using BFS
-**A. DESIGN**
 
 The maze is represented as a 2D Matrix, here is symbol used:
 - #, for walls
