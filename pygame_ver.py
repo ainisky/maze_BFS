@@ -91,11 +91,7 @@ def reset_game():
     exit_pos = get_random_open_cell(maze)
     maze[exit_pos[1]][exit_pos[0]] = "E"
     
-    game_state = "PLAYING"
     last_enemy_move = time.time()
-
-
-game_state = "PLAYING"
 
 # handle input
 
@@ -105,9 +101,10 @@ def handle_input(event):
     if event.type != pygame.KEYDOWN:
         return
 
-    if game_state != "PLAYING":
-        if event.key == pygame.K_r:
+    if game_state in ["MENU", "WIN", "LOSE"]:
+        if event.key == pygame.K_SPACE:
             reset_game()
+            game_state = "PLAYING"
         return
 
     new_x, new_y = player
@@ -145,8 +142,62 @@ def update():
 
 # UI
 
+stars = []
+
+for i in range(80):
+    x = random.randint(0, WIDTH)
+    y = random.randint(0, HEIGHT)
+    stars.append((x, y))
+
 def draw():
-    screen.fill((30, 30, 30))
+    screen.fill((12, 18, 30))
+
+    for x, y in stars:
+        pygame.draw.circle(screen, (255, 255, 255), (x, y), 1)
+
+    FLOOR_A = (90, 140, 200)  
+    FLOOR_B = (100, 150, 210)  
+    WALL_COLOR = (210, 210, 220)
+    WALL_SHADOW = (170, 170, 180)
+    WALL_HIGHLIGHT = (245, 245, 250)
+    
+    if game_state == "MENU":
+        
+        title = font.render("ALIEN ESCAPE", True, (120, 255, 180))
+
+        story_lines = [
+            "You are an alien stranded on Earth and captured!",
+            "Escape the lab and find your spaceship",
+            "before the scientist catches you again!"
+        ]
+
+        screen.blit(
+            title,
+            (WIDTH//2 - title.get_width()//2, 140)
+        )
+
+        small_font = pygame.font.SysFont(None, 32)
+
+        for i, line in enumerate(story_lines):
+            text = small_font.render(line, True, (230, 230, 230))
+
+            screen.blit(
+                text,
+                (WIDTH//2 - text.get_width()//2, 250 + i * 40)
+            )
+
+        start_text = small_font.render(
+            "Press SPACE to Start",
+            True,
+            (255, 255, 100)
+        )
+
+        screen.blit(
+            start_text,
+            (WIDTH//2 - start_text.get_width()//2, 420)
+        )
+
+        return
 
     if game_state == "PLAYING":
         for y, row in enumerate(maze):
@@ -162,31 +213,85 @@ def draw():
                 if char == "#":
                     pygame.draw.rect(screen, WALL_COLOR, rect)
 
-                elif char == "E":
-                    pygame.draw.rect(screen, EXIT_COLOR, rect)
+                    pygame.draw.line(screen, WALL_HIGHLIGHT, rect.topleft, rect.topright)
+                    pygame.draw.line(screen, WALL_HIGHLIGHT, rect.topleft, rect.bottomleft)
 
-        pygame.draw.rect(screen, ENEMY_COLOR,
-            (offset_x + enemy[0]*TILE, offset_y + enemy[1]*TILE, TILE, TILE))
+                    pygame.draw.line(screen, WALL_SHADOW, rect.bottomleft, rect.bottomright)
+                    pygame.draw.line(screen, WALL_SHADOW, rect.topright, rect.bottomright)
 
-        pygame.draw.rect(screen, PLAYER_COLOR,
-            (offset_x + player[0]*TILE, offset_y + player[1]*TILE, TILE, TILE))
+                else:
+                    color = FLOOR_A if (x + y) % 2 == 0 else FLOOR_B
+                    pygame.draw.rect(screen, color, rect)
 
-    else:
-        text = font.render(f"{game_state} (Press R)", True, (255, 255, 255))
-        screen.blit(text, (WIDTH//2 - 150, HEIGHT//2))
+        screen.blit(
+            ufo_img,
+            (offset_x + exit_pos[0]*TILE,
+            offset_y + exit_pos[1]*TILE)
+        )
 
+        screen.blit(
+            enemy_img,
+            (offset_x + enemy[0]*TILE,
+            offset_y + enemy[1]*TILE)
+        )
+
+        screen.blit(
+            alien_img,
+            (offset_x + player[0]*TILE,
+            offset_y + player[1]*TILE)
+        )
+
+    tint = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    tint.fill((100, 180, 255, 20))
+    screen.blit(tint, (0, 0))
+
+    if game_state == "WIN":
+        msg = "YOU WIN! Press SPACE to restart"
+        shadow = font.render(msg, True, (0, 0, 0))
+        text = font.render(msg, True, (255, 255, 255))
+
+        screen.blit(shadow, (WIDTH//2 - text.get_width()//2 + 2, HEIGHT//2 + 2))
+        screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2))
+        return
+
+
+    if game_state == "LOSE":
+        msg = "YOU LOSE! Press SPACE to restart"
+        shadow = font.render(msg, True, (0, 0, 0))
+        text = font.render(msg, True, (255, 100, 100))
+
+        screen.blit(shadow, (WIDTH//2 - text.get_width()//2 + 2, HEIGHT//2 + 2))
+        screen.blit(text, (WIDTH//2 - text.get_width()//2, HEIGHT//2))
+        return
+
+def handle_menu_input(event):
+    global game_state
+
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_SPACE:
+            game_state = "PLAYING"
+            reset_game()
 
 # Game start
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 60)
 
 TILE = min(WIDTH // MAZE_W, HEIGHT // MAZE_H)
 offset_x = (WIDTH - MAZE_W * TILE) // 2
 offset_y = (HEIGHT - MAZE_H * TILE) // 2
 
-reset_game()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 60)
+
+alien_img = pygame.image.load("assets/alien.png")
+enemy_img = pygame.image.load("assets/enemy.png")
+ufo_img = pygame.image.load("assets/ufo.png")
+
+alien_img = pygame.transform.scale(alien_img, (TILE, TILE))
+enemy_img = pygame.transform.scale(enemy_img, (TILE, TILE))
+ufo_img = pygame.transform.scale(ufo_img, (TILE, TILE))
+
+game_state = "MENU"
 
 while True:
     for event in pygame.event.get():
@@ -194,9 +299,18 @@ while True:
             pygame.quit()
             sys.exit()
 
-        handle_input(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_e:
+                pygame.quit()
+                sys.exit()
 
-    update()
+        if game_state == "MENU":
+            handle_menu_input(event)
+        else:
+            handle_input(event)
+    if game_state == "PLAYING":
+        update()
+        
     draw()
 
     pygame.display.update()
